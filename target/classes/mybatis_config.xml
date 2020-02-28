@@ -9,5 +9,11 @@
 		<mapper resource="cn/sz/gl/pojo/Book.xml" />
 		<mapper resource="cn/sz/gl/pojo/StoreHouse.xml" />
 		<mapper resource="cn/sz/gl/pojo/Users.xml" />
+		
+		
+		<mapper resource="cn/sz/gl/pojo/Account.xml" />
+		<mapper resource="cn/sz/gl/pojo/Book.xml" />
+		<mapper resource="cn/sz/gl/pojo/StoreHouse.xml" />
+		<mapper resource="cn/sz/gl/pojo/Users.xml" />
 	</mappers>
 </configuration>
