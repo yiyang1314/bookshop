@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans 
+	default-autowire="byName"
+	xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+		http://www.springframework.org/schema/mvc 
+		http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd
+		http://www.springframework.org/schema/context 
+		http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://www.springframework.org/schema/tx 
+		http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+		http://www.springframework.org/schema/aop 
+		http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+		">
+	
+	<!-- 配置数据源 -->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+		<property name="driverClassName" value="oracle.jdbc.driver.OracleDriver" ></property>
+		<property name="url" value="jdbc:oracle:thin:@localhost:1521:orcl"></property>
+		<property name="username" value="zhangsan" ></property>
+		<property name="password" value="abc" ></property>
+	</bean>
+	
+	<!-- 这里，还需要配置连接工厂 -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean" >
+		<property name="dataSource" ref="dataSource" ></property>
+		<property name="configLocation" value="classpath:mybatis_config.xml"></property>
+	</bean>
+		
+		
+	<context:annotation-config></context:annotation-config>
+	<context:component-scan base-package="cn.sz.gl"></context:component-scan>
+	
+	
+	<mvc:resources location="/js/" mapping="/js/**"></mvc:resources>
+	<mvc:resources location="/images/" mapping="/images/**"></mvc:resources>
+	<mvc:resources location="/css/" mapping="/css/**"></mvc:resources>
+	<mvc:resources location="/upload/" mapping="/upload/**"></mvc:resources>
+	
+	<!-- 配置mvc的注解驱动 -->
+	<!-- <mvc:annotation-driven conversion-service="myconverter" ></mvc:annotation-driven> -->
+	<mvc:annotation-driven ></mvc:annotation-driven>
+	
+	<!-- 自定义类型转换器 -->
+	<!-- <bean id="dateconverter" class="cn.sz.gl.util.MyDateConvter"></bean>
+	<bean id="myconverter" class="org.springframework.context.support.ConversionServiceFactoryBean" >
+		<property name="converters">
+			<set>
+				<ref bean="dateconverter" />
+			</set>
+		</property>
+	</bean> -->
+	
+	
+	<!-- 配置视图处理器 -->
+	<bean id="viewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/"></property>
+		<property name="suffix" value=".jsp"></property>
+	</bean>
+
+
+
+	<bean id="daoimpl" class="org.mybatis.spring.mapper.MapperScannerConfigurer"  >
+		<property name="sqlSessionFactoryBeanName" value="sqlSessionFactory" ></property>
+		<property name="basePackage" value="cn.sz.gl.dao" ></property>
+	</bean>
+
+
+	<!-- 准备一个文件上传的操作对象 -->
+	<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver" >
+		<property name="defaultEncoding" value="utf-8"></property>
+	</bean>
+
+
+	<!-- 拦截器 -->
+	<!-- <bean id="checklogin" class="cn.sz.gl.util.LoginIntercepter" ></bean>
+	<mvc:interceptors>
+		<ref bean="checklogin" />
+	</mvc:interceptors> -->
+	
+	<!-- <mvc:interceptors>
+		<bean class="cn.sz.gl.util.LoginIntercepter" ></bean>
+	</mvc:interceptors> -->
+	
+	<mvc:interceptors>
+		<mvc:interceptor>
+			<mvc:mapping path="/**"/>
+			<!-- <mvc:mapping path="/uc/**"/>
+			<mvc:mapping path="/bc/**"/> -->
+			<bean class="cn.sz.gl.util.LoginIntercepter"></bean>
+		</mvc:interceptor>
+	</mvc:interceptors>
+
+
+	<!-- spring的事务管理 -->
+	<!-- 
+		1.添加tx依赖
+		2.app.xml文件中，添加tx的schame
+		3.配置事务
+			spring的事务分编程式事务和声明式事务
+			这里使用的是声明式事务;
+			实现可以通过配置的方式，也可以通过注解的方式
+	 -->
+
+	<!-- 事务的添加，需要三个步骤 (配置的方式)-->
+	<!-- 准备事务管理对象 -->
+	<!-- <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource"></property>
+	</bean> -->
+	<!-- 制定事务管理规则 -->
+	<!-- 
+		tx:method 用来针对某一部分方法，来给定管理规则
+			name : 用来匹配方法    比如   find* 就表示以find开头的方法
+			read-only : 表示该方法只能用来读取数据，而不允许做增，删，改操作
+			isolation : 表示事务的隔离级别
+				READ_UNCOMMITTED  :  表示在事务没有结束之前，其他事务就可以看到前面的事务修改的数据;
+				READ_COMMITTED  : 表示前一个事务在提交之前，其他事务不能看到前一个事务修改的数据;
+				REPEATABLE_READ : 
+				SERIALIZABLE : 
+				DEFAULT ：
+			propagation ： 事务的传播行为
+				REQUIRED ： 方法必须运行在事务中，方法执行之前， 如果已经有了事务，那么就加入现有的事务；如果没有事务，那么就创建一个新的事务
+				REQUIRES_NEW : 不管现在有没有事务，都开启一个新的事务；而原来如果有事务，则原有事务选择挂起
+			timeout  : 事务执行的限定时间,超出时间，就回滚，不管发没发生异常;
+			rollback-for ： 发生指定的异常时，就回滚；
+			no-rollback-for : 发生指定的异常，就不回滚;
+	 -->
+<!-- 	<tx:advice id="adv" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="find*" isolation="READ_COMMITTED"  propagation="REQUIRES_NEW" read-only="true" />
+			<tx:method name="buy*" isolation="READ_COMMITTED" propagation="REQUIRED" rollback-for="cn.sz.gl.util.StoreHouseLessException,cn.sz.gl.util.BalanceLessException" />
+		</tx:attributes>
+	</tx:advice> -->
+	<!-- 指定事务管理的范围 -->
+	<!-- <aop:config>
+		<aop:pointcut expression="execution(* cn.sz.gl.service.IBookService.*(..))" id="bs"/>
+		<aop:advisor advice-ref="adv" pointcut-ref="bs" />
+	</aop:config> -->
+	
+	
+	<!-- 注解方式实现事务 -->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource"></property>
+	</bean>
+	<tx:annotation-driven transaction-manager="transactionManager" />
+	
+	
+</beans>
+ 
